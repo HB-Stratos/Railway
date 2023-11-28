@@ -19,8 +19,8 @@ public abstract class PuffSmokeParticleData<T extends PuffSmokeParticleData<T>> 
 	
 	@FunctionalInterface
 	protected interface Constructor<T extends PuffSmokeParticleData<T>> {
-		@Contract("_, _, _, _ -> new")
-		T create(boolean stationary, float red, float green, float blue);
+		@Contract("_, _, _, _, _ -> new")
+		T create(boolean stationary, float red, float green, float blue, float acceleration);
 	}
 
 	protected static <T extends PuffSmokeParticleData<T>> Codec<T> makeCodec(Constructor<T> constructor) {
@@ -32,7 +32,9 @@ public abstract class PuffSmokeParticleData<T extends PuffSmokeParticleData<T>> 
 				Codec.FLOAT.fieldOf("green")
 					.forGetter(p -> p.green),
 				Codec.FLOAT.fieldOf("blue")
-					.forGetter(p -> p.blue))
+					.forGetter(p -> p.blue),
+				Codec.FLOAT.fieldOf("acceleration")
+					.forGetter(p -> p.acceleration))
 			.apply(i, constructor::create));
 	}
 
@@ -49,12 +51,14 @@ public abstract class PuffSmokeParticleData<T extends PuffSmokeParticleData<T>> 
                 float green = reader.readFloat();
                 reader.expect(' ');
                 float blue = reader.readFloat();
-                return constructor.create(stationary, red, green, blue);
+				reader.expect(' ');
+				float acceleration = reader.readFloat();
+                return constructor.create(stationary, red, green, blue, acceleration);
             }
 
             public @NotNull T fromNetwork(@NotNull ParticleType<T> particleTypeIn,
 										  @NotNull FriendlyByteBuf buffer) {
-                return constructor.create(buffer.readBoolean(), buffer.readFloat(), buffer.readFloat(), buffer.readFloat());
+                return constructor.create(buffer.readBoolean(), buffer.readFloat(), buffer.readFloat(), buffer.readFloat(), buffer.readFloat());
             }
         };
 	}
@@ -63,13 +67,14 @@ public abstract class PuffSmokeParticleData<T extends PuffSmokeParticleData<T>> 
 	float red;
 	float green;
 	float blue;
+	float acceleration;
 
 	protected PuffSmokeParticleData() {
 		this(false);
 	}
 
 	protected PuffSmokeParticleData(float red, float green, float blue) {
-		this(false, red, green, blue);
+		this(false, red, green, blue, 0);
 	}
 
 	protected PuffSmokeParticleData(boolean stationary) {
@@ -77,14 +82,15 @@ public abstract class PuffSmokeParticleData<T extends PuffSmokeParticleData<T>> 
 	}
 
 	protected PuffSmokeParticleData(boolean stationary, float brightness) {
-		this(stationary, brightness, brightness, brightness);
+		this(stationary, brightness, brightness, brightness, 0);
 	}
 
-	protected PuffSmokeParticleData(boolean stationary, float red, float green, float blue) {
+	protected PuffSmokeParticleData(boolean stationary, float red, float green, float blue, float acceleration) {
 		this.stationary = stationary;
 		this.red = red;
 		this.green = green;
 		this.blue = blue;
+		this.acceleration = acceleration;
 	}
 
 	protected abstract @NotNull CRParticleTypes getParticleType();
@@ -100,11 +106,12 @@ public abstract class PuffSmokeParticleData<T extends PuffSmokeParticleData<T>> 
 		buffer.writeFloat(red);
 		buffer.writeFloat(green);
 		buffer.writeFloat(blue);
+		buffer.writeFloat(acceleration);
 	}
 
 	@Override
 	public @NotNull String writeToString() {
-		return String.format(Locale.ROOT, "%s %b %f %f %f", getParticleType().parameter(), stationary, red, green, blue);
+		return String.format(Locale.ROOT, "%s %b %f %f %f", getParticleType().parameter(), stationary, red, green, blue, acceleration);
 	}
 
 	@SuppressWarnings("deprecation")
@@ -119,11 +126,11 @@ public abstract class PuffSmokeParticleData<T extends PuffSmokeParticleData<T>> 
 
 	public abstract float getQuadSize();
 
-	public static PuffSmokeParticleData<?> create(boolean small, boolean stationary, float red, float green, float blue) {
+	public static PuffSmokeParticleData<?> create(boolean small, boolean stationary, float red, float green, float blue, float acceleration) {
 		if (small) {
-			return new Small(stationary, red, green, blue);
+			return new Small(stationary, red, green, blue, acceleration);
 		} else {
-			return new Medium(stationary, red, green, blue);
+			return new Medium(stationary, red, green, blue, acceleration);
 		}
 	}
 
@@ -155,8 +162,8 @@ public abstract class PuffSmokeParticleData<T extends PuffSmokeParticleData<T>> 
 			super(stationary, brightness);
 		}
 
-		public Small(boolean stationary, float red, float green, float blue) {
-			super(stationary, red, green, blue);
+		public Small(boolean stationary, float red, float green, float blue, float acceleration) {
+			super(stationary, red, green, blue, acceleration);
 		}
 
 		@Override
@@ -206,8 +213,8 @@ public abstract class PuffSmokeParticleData<T extends PuffSmokeParticleData<T>> 
 			super(stationary, brightness);
 		}
 
-		public Medium(boolean stationary, float red, float green, float blue) {
-			super(stationary, red, green, blue);
+		public Medium(boolean stationary, float red, float green, float blue, float acceleration) {
+			super(stationary, red, green, blue, acceleration);
 		}
 
 		@Override

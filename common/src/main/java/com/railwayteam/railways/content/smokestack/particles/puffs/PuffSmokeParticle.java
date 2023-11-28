@@ -1,5 +1,6 @@
 package com.railwayteam.railways.content.smokestack.particles.puffs;
 
+import com.railwayteam.railways.Railways;
 import com.railwayteam.railways.content.smokestack.particles.CustomAnimatedTextureSheetParticle;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
@@ -38,6 +39,13 @@ public class PuffSmokeParticle extends CustomAnimatedTextureSheetParticle {
 
     @Override
     public void tick() {
+
+        //xd = 0;
+        //yd = 0;
+        //zd = 0;
+
+        Railways.LOGGER.info("Acceleration is " + "how the heck do I get access to PuffSmokeParticleData?");
+
         super.tick();
 
         float diffusionScale = stationarySource ? 800.0f : 500.0f;

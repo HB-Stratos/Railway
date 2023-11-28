@@ -70,41 +70,41 @@ public class SmokeStackBlock extends AbstractSmokeStackBlock<SmokeStackBlockEnti
     }
 
     public static void makeParticlesStationary(Level level, BlockPos pos, boolean isSignalFire, boolean spawnExtraSmoke, Vec3 spawnOffset, Vec3 spawnDelta) {
-        makeParticles(level, new Vec3(pos.getX(), pos.getY(), pos.getZ()), isSignalFire, spawnExtraSmoke, spawnOffset, spawnDelta, 1.0, true);
+        makeParticles(level, new Vec3(pos.getX(), pos.getY(), pos.getZ()), isSignalFire, spawnExtraSmoke, spawnOffset, spawnDelta, 1.0, true, 0);
     }
 
-    public static void makeParticles(Level level, Vec3 pos, boolean isSignalFire, boolean spawnExtraSmoke, Vec3 spawnOffset, Vec3 spawnDelta) {
-        makeParticles(level, pos, isSignalFire, spawnExtraSmoke, spawnOffset, spawnDelta, 1.0d);
+    public static void makeParticles(Level level, Vec3 pos, boolean isSignalFire, boolean spawnExtraSmoke, Vec3 spawnOffset, Vec3 spawnDelta, float acceleration) {
+        makeParticles(level, pos, isSignalFire, spawnExtraSmoke, spawnOffset, spawnDelta, 1.0d, acceleration);
     }
 
 
-    public static void makeParticles(Level level, Vec3 pos, boolean isSignalFire, boolean spawnExtraSmoke, Vec3 spawnOffset, Vec3 spawnDelta, double speedMultiplier) {
-        makeParticles(level, pos, isSignalFire, spawnExtraSmoke, spawnOffset, spawnDelta, speedMultiplier, false);
+    public static void makeParticles(Level level, Vec3 pos, boolean isSignalFire, boolean spawnExtraSmoke, Vec3 spawnOffset, Vec3 spawnDelta, double speedMultiplier, float acceleration) {
+        makeParticles(level, pos, isSignalFire, spawnExtraSmoke, spawnOffset, spawnDelta, speedMultiplier, false, acceleration);
     }
 
-    public static void makeParticles(Level level, Vec3 pos, boolean isSignalFire, boolean spawnExtraSmoke, Vec3 spawnOffset, Vec3 spawnDelta, double speedMultiplier, boolean stationary) {
+    public static void makeParticles(Level level, Vec3 pos, boolean isSignalFire, boolean spawnExtraSmoke, Vec3 spawnOffset, Vec3 spawnDelta, double speedMultiplier, boolean stationary, float acceleration) {
         DyeColor color = null;
         boolean isSoul = false;
         if (level.getBlockEntity(new BlockPos(pos)) instanceof SmokeStackBlockEntity be) {
             isSoul = be.isSoul();
             color = be.getColor();
         }
-        makeParticles(level, pos, isSignalFire, spawnExtraSmoke, spawnOffset, spawnDelta, speedMultiplier, stationary, color, null, isSoul);
+        makeParticles(level, pos, isSignalFire, spawnExtraSmoke, spawnOffset, spawnDelta, speedMultiplier, stationary, color, null, isSoul, acceleration);
     }
 
-    public static void makeParticles(Level level, Vec3 pos, boolean isSignalFire, boolean spawnExtraSmoke, Vec3 spawnOffset, Vec3 spawnDelta, double speedMultiplier, boolean stationary, @Nullable DyeColor color) {
-        makeParticles(level, pos, isSignalFire, spawnExtraSmoke, spawnOffset, spawnDelta, speedMultiplier, stationary, color, null);
+    public static void makeParticles(Level level, Vec3 pos, boolean isSignalFire, boolean spawnExtraSmoke, Vec3 spawnOffset, Vec3 spawnDelta, double speedMultiplier, boolean stationary, @Nullable DyeColor color, float acceleration) {
+        makeParticles(level, pos, isSignalFire, spawnExtraSmoke, spawnOffset, spawnDelta, speedMultiplier, stationary, color, null, acceleration);
     }
 
-    public static void makeParticles(Level level, Vec3 pos, boolean isSignalFire, boolean spawnExtraSmoke, Vec3 spawnOffset, Vec3 spawnDelta, double speedMultiplier, boolean stationary, @Nullable DyeColor color, @Nullable Boolean small) {
-        makeParticles(level, pos, isSignalFire, spawnExtraSmoke, spawnOffset, spawnDelta, speedMultiplier, stationary, color, small, false);
+    public static void makeParticles(Level level, Vec3 pos, boolean isSignalFire, boolean spawnExtraSmoke, Vec3 spawnOffset, Vec3 spawnDelta, double speedMultiplier, boolean stationary, @Nullable DyeColor color, @Nullable Boolean small, float acceleration) {
+        makeParticles(level, pos, isSignalFire, spawnExtraSmoke, spawnOffset, spawnDelta, speedMultiplier, stationary, color, small, false, acceleration);
     }
 
-    public static void makeParticles(Level level, Vec3 pos, boolean isSignalFire, boolean spawnExtraSmoke, Vec3 spawnOffset, Vec3 spawnDelta, double speedMultiplier, boolean stationary, @Nullable DyeColor color, @Nullable Boolean small, boolean isSoul) {
+    public static void makeParticles(Level level, Vec3 pos, boolean isSignalFire, boolean spawnExtraSmoke, Vec3 spawnOffset, Vec3 spawnDelta, double speedMultiplier, boolean isStationary, @Nullable DyeColor color, @Nullable Boolean isSmall, boolean isSoul, float acceleration) {
         RandomSource random = level.getRandom();
         SmokeType smokeType = CRConfigs.client().smokeType.get();
-        if (small == null)
-            small = random.nextDouble() < 0.33;
+        if (isSmall == null)
+            isSmall = random.nextDouble() < 0.33;
         switch (smokeType) {
             case VANILLA -> {
                 SimpleParticleType particleType = isSignalFire ? ParticleTypes.CAMPFIRE_SIGNAL_SMOKE : ParticleTypes.CAMPFIRE_COSY_SMOKE;
@@ -112,31 +112,31 @@ public class SmokeStackBlock extends AbstractSmokeStackBlock<SmokeStackBlockEnti
                     pos.x() + spawnOffset.x + random.nextDouble() * spawnDelta.x * (double)(random.nextBoolean() ? 1 : -1),
                     pos.y() + random.nextDouble() * spawnDelta.y + spawnOffset.y,
                     pos.z() + spawnOffset.z + random.nextDouble() * spawnDelta.z * (double)(random.nextBoolean() ? 1 : -1),
-                    0.0D, 0.07D*speedMultiplier / (stationary ? 1. : 25.), 0.0D);
+                    0.0D, 0.07D*speedMultiplier / (isStationary ? 1. : 25.), 0.0D);
             }
             case OLD -> {
                 ParticleOptions particleType;
                 if (color != null) {
                     float[] c = color.getTextureDiffuseColors();
-                    particleType = new SmokeParticleData(stationary, c[0], c[1], c[2]);
+                    particleType = new SmokeParticleData(isStationary, c[0], c[1], c[2]);
                 } else {
-                    particleType = new SmokeParticleData(stationary);
+                    particleType = new SmokeParticleData(isStationary);
                 }
                 level.addAlwaysVisibleParticle(particleType, true,
                     pos.x() + spawnOffset.x + random.nextDouble() * spawnDelta.x * (random.nextDouble() * 2 - 1),
                     pos.y() + random.nextDouble() * spawnDelta.y + spawnOffset.y + 0.5,
                     pos.z() + spawnOffset.z + random.nextDouble() * spawnDelta.z * (random.nextDouble() * 2 - 1),
-                    0.0D, 0.07D * speedMultiplier * (stationary ? 25 : 1), 0.0D);
+                    0.0D, 0.07D * speedMultiplier * (isStationary ? 25 : 1), 0.0D);
             }
             case CARTOON -> {
                 ParticleOptions particleType;
                 if (isSoul) {
-                    particleType = PuffSmokeParticleData.create(small, stationary, -2, -2, -2);
+                    particleType = PuffSmokeParticleData.create(isSmall, isStationary, -2, -2, -2, acceleration);
                 } else if (color != null) {
                     float[] c = color.getTextureDiffuseColors();
-                    particleType = PuffSmokeParticleData.create(small, stationary, c[0], c[1], c[2]);
+                    particleType = PuffSmokeParticleData.create(isSmall, isStationary, c[0], c[1], c[2], acceleration);
                 } else {
-                    particleType = PuffSmokeParticleData.create(small, stationary);
+                    particleType = PuffSmokeParticleData.create(isSmall, isStationary, -1, -1, -1, acceleration);
                 }
                 level.addAlwaysVisibleParticle(particleType, true,
                     pos.x() + spawnOffset.x + random.nextDouble() * spawnDelta.x * (random.nextDouble() * 2 - 1),

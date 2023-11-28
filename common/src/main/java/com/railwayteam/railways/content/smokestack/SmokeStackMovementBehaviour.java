@@ -13,7 +13,10 @@ import com.simibubi.create.content.contraptions.TranslatingContraption;
 import com.simibubi.create.content.contraptions.behaviour.MovementBehaviour;
 import com.simibubi.create.content.contraptions.behaviour.MovementContext;
 import com.simibubi.create.content.contraptions.render.ContraptionMatrices;
+import com.simibubi.create.content.trains.entity.Carriage;
 import com.simibubi.create.content.trains.entity.CarriageContraption;
+import com.simibubi.create.content.trains.entity.CarriageContraptionEntity;
+import com.simibubi.create.content.trains.entity.Train;
 import com.simibubi.create.foundation.utility.AnimationTickHolder;
 import com.simibubi.create.foundation.utility.animation.LerpedFloat;
 import net.fabricmc.api.EnvType;
@@ -167,6 +170,9 @@ public class SmokeStackMovementBehaviour implements MovementBehaviour {
         RenderSystem.setShaderColor(oldShaderColor[0], oldShaderColor[1], oldShaderColor[2], oldShaderColor[3]);
     }
 
+
+    double previousSpeed;
+    double currentSpeed;
     @Override
     public void tick(MovementContext context) {
         if (context.world == null || !context.world.isClientSide || context.position == null
@@ -202,6 +208,17 @@ public class SmokeStackMovementBehaviour implements MovementBehaviour {
             chanceModifierTarget = (float) ((Math.abs(actualSpeed * 1500) + 100) / 800);
             chanceModifierTarget = chanceModifierTarget * chanceModifierTarget;
         }*/
+
+
+        Carriage carriage;
+        if (context.contraption.entity instanceof CarriageContraptionEntity cce && (carriage = cce.getCarriage()) != null) {
+            Train train = carriage.train;
+            previousSpeed = currentSpeed;
+            currentSpeed = train.speed;
+        }
+
+        float acceleration = 0;
+        acceleration = (float) ((currentSpeed-previousSpeed)*(1/20));
 
         if (!createsSmoke)
             return;
@@ -249,6 +266,7 @@ public class SmokeStackMovementBehaviour implements MovementBehaviour {
         }
 
         // chimney push
+        // this is the startup sequence lasting 16 ticks, a push and three puffs
         if (smokeType == SmokeType.CARTOON && color != DyeColor.WHITE) {
             if (movementTicks == 0) {
                 ChimneyPushParticleData<?> particleType;
@@ -264,7 +282,7 @@ public class SmokeStackMovementBehaviour implements MovementBehaviour {
             } else if (movementTicks == 8) {
                 for (int i = 0; i < 3; i++) {
                     SmokeStackBlock.makeParticles(context.world, context.position.subtract(0.5, 0, 0.5).subtract((random.nextDouble() - 0.5) * 0.5, (random.nextDouble() - 0.5) * 0.5, (random.nextDouble() - 0.5) * 0.5), random.nextBoolean(), true,
-                        type.getParticleSpawnOffset(), type.getParticleSpawnDelta(), speedMultiplierChaser.getValue(), false, color, true, isSoul);
+                        type.getParticleSpawnOffset(), type.getParticleSpawnDelta(), speedMultiplierChaser.getValue(), false, color, true, isSoul, acceleration);
                 }
             } else if (movementTicks < 15) {
                 return;
@@ -274,20 +292,21 @@ public class SmokeStackMovementBehaviour implements MovementBehaviour {
         }
 
         // normal smoke
+        // smoke that starts out small and then becomes almost exclusively large smoke particles
         if (smokeType != SmokeType.CARTOON || color != DyeColor.WHITE) {
             if (random.nextFloat() < type.particleSpawnChance * chanceModifier * CRConfigs.client().smokePercentage.get()) {
                 for (int i = 0; i < random.nextInt((type.maxParticles + maxModifier - (type.minParticles + minModifier))) + type.minParticles + minModifier; ++i) {
-                    boolean small = movementTicks < 50;
-                    if (!small) {
+                    boolean isSmall = movementTicks < 50;
+                    if (!isSmall) {
                         double smallChance = 0.33;
                         if (movementTicks < 100) {
                             smallChance = Mth.lerp((movementTicks - 50) / 50.0f, 1.0, 0.33);
                         }
                         double speedFactor = 0.3 + (0.7 * Math.max(0, Math.min(chanceModifier / 2, 1)));
-                        small = random.nextDouble() * speedFactor < smallChance;
+                        isSmall = random.nextDouble() * speedFactor < smallChance;
                     }
-                    SmokeStackBlock.makeParticles(context.world, context.position.subtract(0.5, 0, 0.5).subtract((random.nextDouble() - 0.5) * 0.5, (random.nextDouble() - 0.5) * 0.5, (random.nextDouble() - 0.5) * 0.5), random.nextBoolean(), true,
-                        type.getParticleSpawnOffset(), type.getParticleSpawnDelta(), speedMultiplierChaser.getValue(), false, color, small, isSoul);
+                    SmokeStackBlock.makeParticles(context.world, context.position.subtract(0.5, 0, 0.5).subtract((random.nextDouble() - 0.5) * 0.5, (random.nextDouble() - 0.5) * 0.5, (random.nextDouble() - 0.5) * 0.5).add(0,5,0), random.nextBoolean(), true,
+                        type.getParticleSpawnOffset(), type.getParticleSpawnDelta(), speedMultiplierChaser.getValue(), false, color, isSmall, isSoul, acceleration);
                 }
             }
         }
@@ -297,6 +316,7 @@ public class SmokeStackMovementBehaviour implements MovementBehaviour {
         if (!(context.contraption instanceof CarriageContraption) && !(context.contraption instanceof TranslatingContraption)) return;
 
         // little smoke go vroom
+        // intermittent puffs of small smoke particles that seemingly rise faster
         if (chanceModifier >= 0.25 && CRConfigs.client().spawnFasterPuffs.get()) {
             //                                        0.25 * 85
             int littleSmokeInterval = (int) Mth.clamp(21.25/chanceModifier, 15, 85);
@@ -307,7 +327,7 @@ public class SmokeStackMovementBehaviour implements MovementBehaviour {
                 for (int i = 0; i < random.nextInt((type.maxParticles + maxModifier - (type.minParticles + minModifier))) + type.minParticles + minModifier; ++i) {
                     boolean small = true;
                     SmokeStackBlock.makeParticles(context.world, context.position.subtract(0.5, 0, 0.5).subtract((random.nextDouble() - 0.5) * 0.5, (random.nextDouble() - 0.5) * 0.5, (random.nextDouble() - 0.5) * 0.5), random.nextBoolean(), true,
-                        type.getParticleSpawnOffset(), type.getParticleSpawnDelta(), -1, false, color, small, isSoul);
+                        type.getParticleSpawnOffset(), type.getParticleSpawnDelta(), -1, false, color, small, isSoul, acceleration);
                 }
             }
             if (time % littleSmokeInterval == 3)
@@ -315,6 +335,7 @@ public class SmokeStackMovementBehaviour implements MovementBehaviour {
         }
 
         // normal steam
+        // when the stack is dyed white it emits repeating white puffs of smoke
         int steamInterval = (int) Mth.clamp(6.25/chanceModifier, 13, 50);
         if (CRConfigs.client().spawnSteam.get() || color == DyeColor.WHITE) {
             if (context.world.getGameTime() % steamInterval >= 0 && context.world.getGameTime() % steamInterval <= 3) {
@@ -337,7 +358,7 @@ public class SmokeStackMovementBehaviour implements MovementBehaviour {
                         small = random.nextDouble() * speedFactor < smallChance;
                     }
                     SmokeStackBlock.makeParticles(context.world, context.position.subtract(0.5, 0, 0.5).subtract((random.nextDouble() - 0.5) * 0.5, (random.nextDouble() - 0.5) * 0.5, (random.nextDouble() - 0.5) * 0.5), random.nextBoolean(), true,
-                        type.getParticleSpawnOffset(), type.getParticleSpawnDelta(), speedMultiplierChaser.getValue(), false, color, small, false);
+                        type.getParticleSpawnOffset(), type.getParticleSpawnDelta(), speedMultiplierChaser.getValue(), false, color, small, false, acceleration);
                 }
             }
         }
