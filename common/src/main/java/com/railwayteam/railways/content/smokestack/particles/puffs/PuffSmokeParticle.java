@@ -4,6 +4,7 @@ import com.railwayteam.railways.Railways;
 import com.railwayteam.railways.content.smokestack.particles.CustomAnimatedTextureSheetParticle;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
+import net.minecraft.client.gui.screens.BackupConfirmScreen;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.particle.*;
 import net.minecraft.util.Mth;
@@ -14,9 +15,12 @@ import org.jetbrains.annotations.Nullable;
 @Environment(EnvType.CLIENT)
 public class PuffSmokeParticle extends CustomAnimatedTextureSheetParticle {
     public static final int DOUBLE_SPEED_SENTINEL = 42;
+
+    protected float acceleration = 0;
+
     protected final boolean stationarySource;
     protected final RandomSource random;
-    protected PuffSmokeParticle(ClientLevel level, double x, double y, double z, RandomSource random, boolean stationarySource, double ySpeed) {
+    protected PuffSmokeParticle(ClientLevel level, double x, double y, double z, RandomSource random, boolean stationarySource, double ySpeed, float acceleration) {
         super(level, x, y, z, 0.0, ySpeed, 0.0);
         if (Mth.equal(DOUBLE_SPEED_SENTINEL, ySpeed)) {
             this.yd *= 1.5;
@@ -25,7 +29,10 @@ public class PuffSmokeParticle extends CustomAnimatedTextureSheetParticle {
         this.friction = 0.99f;
         this.random = random;
         this.stationarySource = stationarySource;
+        this.acceleration = acceleration;
         setLifetime(random.nextIntBetweenInclusive(65, 105) + (stationarySource ? 40 : 0));
+
+        //Railways.LOGGER.info("Acceleration is " + acceleration*100000);
     }
 
     @Override
@@ -44,7 +51,6 @@ public class PuffSmokeParticle extends CustomAnimatedTextureSheetParticle {
         //yd = 0;
         //zd = 0;
 
-        Railways.LOGGER.info("Acceleration is " + "how the heck do I get access to PuffSmokeParticleData?");
 
         super.tick();
 
@@ -73,7 +79,7 @@ public class PuffSmokeParticle extends CustomAnimatedTextureSheetParticle {
         @Nullable
         @Override
         public Particle createParticle(@NotNull T type, @NotNull ClientLevel level, double x, double y, double z, double xSpeed, double ySpeed, double zSpeed) {
-            PuffSmokeParticle particle = new PuffSmokeParticle(level, x, y, z, level.getRandom(), type.stationary, ySpeed);
+            PuffSmokeParticle particle = new PuffSmokeParticle(level, x, y, z, level.getRandom(), type.stationary, ySpeed, type.acceleration);
             int textureCount = 3;
             int idx = 0;
             if (Mth.equal(type.red, -1) && Mth.equal(type.green, -1) && Mth.equal(type.blue, -1)) {

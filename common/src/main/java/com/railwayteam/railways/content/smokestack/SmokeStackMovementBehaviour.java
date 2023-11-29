@@ -5,6 +5,7 @@ import com.jozufozu.flywheel.core.virtual.VirtualRenderWorld;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.BufferBuilder;
 import com.mojang.blaze3d.vertex.Tesselator;
+import com.railwayteam.railways.Railways;
 import com.railwayteam.railways.config.CRConfigs;
 import com.railwayteam.railways.content.smokestack.particles.chimneypush.ChimneyPushParticle;
 import com.railwayteam.railways.content.smokestack.particles.chimneypush.ChimneyPushParticleData;
@@ -34,6 +35,7 @@ import net.minecraft.world.item.DyeColor;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.NotNull;
 
+import java.awt.image.PackedColorModel;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
@@ -129,6 +131,12 @@ public class SmokeStackMovementBehaviour implements MovementBehaviour {
         context.temporaryData = new TemporaryData(context);
     }
 
+
+    double previousSpeed = 0;
+    double currentSpeed = 0;
+    double smoothedPreviousSpeed = 0;
+    double smoothedCurrentSpeed = 0;
+
     @Override
     public void onSpeedChanged(MovementContext context, Vec3 oldMotion, Vec3 motion) {
         MovementBehaviour.super.onSpeedChanged(context, oldMotion, motion);
@@ -137,6 +145,17 @@ public class SmokeStackMovementBehaviour implements MovementBehaviour {
             if (!isStopped)
                 temporaryData.startMoving(context);
             temporaryData.wasStopped = isStopped;
+        }
+
+        //includes a workaround for speed sometimes reading zero for not stopped train.
+        Carriage carriage;
+        if (context.contraption.entity instanceof CarriageContraptionEntity cce && (carriage = cce.getCarriage()) != null) {
+            Train train = carriage.train;
+            if (!Mth.equal(train.speed, 0)) {
+                currentSpeed = train.speed;
+            } else if (isStopped) {
+                currentSpeed = 0;
+            }
         }
     }
 
@@ -171,8 +190,7 @@ public class SmokeStackMovementBehaviour implements MovementBehaviour {
     }
 
 
-    double previousSpeed;
-    double currentSpeed;
+
     @Override
     public void tick(MovementContext context) {
         if (context.world == null || !context.world.isClientSide || context.position == null
@@ -209,16 +227,18 @@ public class SmokeStackMovementBehaviour implements MovementBehaviour {
             chanceModifierTarget = chanceModifierTarget * chanceModifierTarget;
         }*/
 
-
-        Carriage carriage;
-        if (context.contraption.entity instanceof CarriageContraptionEntity cce && (carriage = cce.getCarriage()) != null) {
-            Train train = carriage.train;
-            previousSpeed = currentSpeed;
-            currentSpeed = train.speed;
+        {//smoothing of speed
+            double chaseMultiplier = 0.1;
+            double error = currentSpeed - smoothedCurrentSpeed;
+            smoothedCurrentSpeed += error * chaseMultiplier;//Mth.clamp(Math.pow(error, 2)* chaseMultiplier, -Math.abs(error), Math.abs(error));
         }
 
         float acceleration = 0;
-        acceleration = (float) ((currentSpeed-previousSpeed)*(1/20));
+        acceleration = (float) (smoothedCurrentSpeed - smoothedPreviousSpeed);
+
+        Railways.LOGGER.info("speed | smoothedSpeed | acceleration = " + Math.round(currentSpeed*1000) + " = " + Math.round(smoothedCurrentSpeed*1000) + " = " + Math.round(acceleration * 1000) );
+        previousSpeed = currentSpeed;
+        smoothedPreviousSpeed = smoothedCurrentSpeed;
 
         if (!createsSmoke)
             return;
